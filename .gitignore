@@ -1,0 +1,10 @@
+build/**
+dist/**
+modules
+latest_**
+ref/**
+**.spec
+**.aux
+**.log
+formulas.pdf
+formulas.tex
