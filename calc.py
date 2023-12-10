@@ -73,17 +73,21 @@ templateHeader = r'''
 templateFooter = r'''
 \end{document}'''
 
+
 def printx(name):
     callers_local_vars = inspect.currentframe().f_back.f_locals.items()
     print(f"{[var_name for var_name, var_val in callers_local_vars if var_val is name][0]} =", round(name, 3))
 
+designation_global = "плечо"
 
-values_list = ["Фамилия И.О.", "0", "0.25", "0.3", "2.0", "0.35", "0.2", "2", "0.03", "0.70", "0.2", "3", "1" ,"4", "2.5", "1", "0.1", "1.3", "1.5", "2.0", "5.0", "1.5", 
-               "4.0", "2.0", "500", "120", "1", "9.81", "0.01", "0.2"]
+designations = ["кисть", "локоть", "плечо"]
+
+values_list = ["Абрамов Д.И.", "1", "0.15", "0.5", "1.0", "0.75", "0.4", "1", "0.05", "0.75", "0.4", "2", "2" ,"2", "1.5", "1", "0.5", "1.8", "2.5", "3.0", "3.0", "4.5", 
+               "6.0", "3.0", "600", "240", "4", "9.81", "0.05", "0.8"]
 
 label_list = ["Имя: ", "Вариант: ", "l2 (l1): ", "l3 / l1: ", "m1: ", "m2 / m1: ", "m3 / m1: ", "m: ", "J1: ", "J2 / J1: ", "J3 / J1: ", "r1 / l1: ", "r2 / l2: ", "r3 / l3: ",
               "phi_m1 / pi: ", "phi_m2 / pi: ", "phi_m3 / pi: ", "phi_1shtr_plecho: ", "phi_1shtr_lokot: ", "phi_1shtr_kist: ", "phi_2shrt_plecho: ", "phi_2shrt_lokot: ",
-            "phi_2shrt_kist: ", "delta: ", "t1: ", "t3: ", "n: ", "g: ", "tau_omega_d: ", "eta_ph: "]
+            "phi_2shrt_kist: ", "delta: ", "t1: ", "t3: ", "n: ", "g: ", "tau_omega_d: ", "eta_ph: ", "Привод: "]
 
 
 root = tk.Tk()
@@ -92,6 +96,10 @@ def on_closing():
     # Add any cleanup code here before closing the window
     root.destroy()
     
+def get_designation(dsg):
+    global designation_global
+    designation_global = dsg
+
 root.protocol("WM_DELETE_WINDOW", on_closing)
 root.title("ZAPEKANOCHKA 2.0")
 
@@ -109,6 +117,18 @@ for c in range(29):
     text_box.grid(row=c, column=1)
     text_boxes.append(text_box)
 
+for c in range(1):
+    
+    label = tk.Label(root, text=label_list[30+c])
+    label.grid(row=(30+c), column=0)
+    labels.append(label)
+    options = tk.StringVar()
+    text_box = tk.OptionMenu(root, options, command=get_designation, *designations)
+    #text_box.insert(0, values_list[29+c])
+    text_box.grid(row=30+c, column=1)
+    text_boxes.append(text_box)
+
+
 def make_plot(substitution_dict, md_equ, ud_eq, pe_eq, i1, i2):
     
     i = sp.symbols("i")
@@ -116,15 +136,15 @@ def make_plot(substitution_dict, md_equ, ud_eq, pe_eq, i1, i2):
     tempMDMO = 0
     prevSub = 1
 
-        
-    
-    
     Mdmo = []
     Udmo = []
     Pemo = []
+
     v1 = i1.subs(substitution_dict).evalf()
     v2 = i2.subs(substitution_dict).evalf()
 
+    #print (f"Plotting from {v1} to {v2}")
+    
     if (isinstance(v1, sp.Integer) or isinstance(v1, sp.Float)):
         pass
     else:
@@ -135,18 +155,30 @@ def make_plot(substitution_dict, md_equ, ud_eq, pe_eq, i1, i2):
     else:
         return 0
     
-    icount = int(v1)
-    # Итеративный поиск i
-    while ((tempMDMO - tempUDMO) < prevSub):
-        icount = icount + 1
-        substitution_dict[i] = icount
-        prevSub = tempMDMO - tempUDMO
-        tempUDMO = abs(ud_eq.subs(substitution_dict)).evalf()
-        tempMDMO = abs(md_equ.subs(substitution_dict)).evalf()
-        if (icount > int(v2) ):
-            return 0
 
-    print(f"i equals {icount}")
+    icount = int(v1)
+    
+    # Итеративный поиск i
+    for iicount in range(int(v1), int(v2)):
+        substitution_dict[i] = iicount
+        tempUDMO = ud_eq.subs(substitution_dict).evalf()
+        tempMDMO = md_equ.subs(substitution_dict).evalf()
+        if (isinstance(tempUDMO, sp.Integer) or isinstance(tempUDMO, sp.Float) or isinstance(tempUDMO, float) or isinstance(tempUDMO, int)):
+            pass
+        else:
+            return 0
+        if (isinstance(tempMDMO, sp.Integer) or isinstance(tempMDMO, sp.Float) or isinstance(tempMDMO, float) or isinstance(tempMDMO, int)):
+            pass
+        else:
+            return 0
+        if (abs(tempMDMO - tempUDMO) < abs(prevSub) ):
+            icount = iicount
+        prevSub = tempMDMO - tempUDMO
+
+        #print(f"prevSub: {prevSub} tempMDMO {tempMDMO} tempUDMO: {tempUDMO}")
+
+
+    #print(f"i equals {icount}")
 
     # matplotlib
     if (int(round(v1)) < int(round(v2))):
@@ -196,9 +228,6 @@ def solve_eqs(substitution_dict = {}, latex_lines_list = [], eqs_to_solve = [], 
     # Сначала пишем решение без ответов    
     write_eqs(latex_lines_list, eqs_to_solve, eqs_names)
 
-    
-    # Необходим для подстановки значений в решение
-
     latex_lines_list.append(r"\\ Ответ: \\")
 
     for i in range(len(eqs_to_solve)):
@@ -216,7 +245,7 @@ def solve_eqs(substitution_dict = {}, latex_lines_list = [], eqs_to_solve = [], 
             print(numeric_value)
 
 # Функция проверки пригодности выбранного мотора. Доступные режимы парааметры designation: "кисть", "локоть", "плечо"
-def try_motor(substitution_dict = {}, latex_lines=[], motor_name = "", motor_params = {}, designation = "кисть"):
+def try_motor(substitution_dict = {}, latex_lines=[], motor_name = "", motor_params = {}, designation = "кисть", check_temp = 1):
     latex_lines_list = []
     lambda_KD,  P_DN,  N_H,  U_YAN, I_YAN, R_YA, J_D, m_DV = sp.symbols("lambda_KD  P_DN  N_H  U_YAN I_YAN R_YA J_D m_DV")
     # motors_params_list = [motor_params['P_DN'], motor_params['N_H'], motor_params['U_YAN'], motor_params['I_YAN'], motor_params['R_YA'], motor_params['J_D'], motor_params['m_DV']]
@@ -238,12 +267,15 @@ sp.symbols('P_DN1 P_DN2 omega_DN M_DN K_M K_OMEGA R_UM R_D U_YAD M_DD M_DM omega
     phi_1shtr, phi_2shrt = sp.symbols("phi_1shtr phi_2shrt")
     M_max, J_min, M_min, phi_m = sp.symbols("M_max J_min M_min phi_m")
     
+    substitution_dict.pop(i, None)
+
     if designation == "кисть":
         J_max = m3 * r3 * r3 + J3 + m * l3 * l3
         M_max = m3 * g * r3 + m * g * l3
 
-        J_min = J_max - m3 * sp.Pow(r3,2) + J3
-        M_min = M_max - m3 * g * r3
+        J_min = m3 * r3*r3 + J3
+        M_min = m3 * g * r3
+
         phi_m = phi_m1
         phi_1shtr = phi_1shtr_kist
         phi_2shrt = phi_2shrt_kist
@@ -258,28 +290,32 @@ sp.symbols('P_DN1 P_DN2 omega_DN M_DN K_M K_OMEGA R_UM R_D U_YAD M_DD M_DM omega
 
         J_min = J_max - m * ((l2 + l3) ** 2)
         M_min = M_max - m * g * (l2 + l3)
+        
         phi_m = phi_m2
         phi_1shtr = phi_1shtr_lokot
         phi_2shrt = phi_2shrt_lokot
         
-        M_m = J_max * phi_2shrt_lokot + M_max
+        M_m = J_max * phi_2shrt + M_max
         omega_ekv = tau_omega_d * phi_2shrt_lokot + phi_1shtr_lokot
         P_M = (omega_ekv * M_m) / eta_ph
     elif designation == "плечо":
-        # TODO убедиться что минимумы это реально нули
-        J_min = 0
-        M_min = 0
+
         phi_m = phi_m3
         phi_1shtr = phi_1shtr_plecho
         phi_2shrt = phi_2shrt_plecho
         m_p4 = 2.5 * m_DV
         J_max = m1 * sp.Pow(r1,2) + J1 + m_p4 + sp.Pow(l1,2) + m2 * sp.Pow((l1 + r2),2) + J2 + (m)*sp.Pow((l1 + l2),2) + m3 * sp.Pow((l1 + l2 + r3), 2) + J3 + m*sp.Pow((l1+l2+l3), 2)
         M_max = m1 * g * r1 + m_p4 * g * l1 + m2 * g * (l1 + r2) + (m) * g * (l1 + l2) + m3 * g * (l1 + l2 + r3) + m * g * (l1 + l2 + l3)
-        M_m = J_max*phi_2shrt_plecho+M_max
+
+        J_min = J_max - m * (l1 + l2 + l3)*(l1 + l2 + l3)
+        M_min = M_max - m * g * (l1 + l2 + l3)
+        
+        M_m = J_max*phi_2shrt+M_max
         omega_ekv = tau_omega_d*phi_2shrt_plecho+phi_1shtr_plecho
         P_M = (omega_ekv * M_m) / eta_ph
         P_max = P_M
     else:
+        print("Неправильно задано назначение расчета двигателя!")
         return 0
 
 
@@ -296,11 +332,11 @@ sp.symbols('P_DN1 P_DN2 omega_DN M_DN K_M K_OMEGA R_UM R_D U_YAD M_DD M_DM omega
     substitution_dict[J_D] = motor_params["J_D"]
     substitution_dict[m_DV] = motor_params["m_DV"]
     # TODO сделать перебор лямбд в диапазонах
-    substitution_dict[lambda_T] = 0.6
-    substitution_dict[lambda_SKM] =  1
-    substitution_dict[lambda_SK] =  0.9
-    substitution_dict[lambda_M] =  2
-    substitution_dict[lambda_MM] =  4
+    substitution_dict[lambda_T] = 0.6 # всегда 0.6
+    substitution_dict[lambda_SKM] =  1 # всегда 1
+    substitution_dict[lambda_SK] =  0.8 # от 0.8 до 0.9
+    substitution_dict[lambda_M] =  2 # от 1.5 до 2
+    substitution_dict[lambda_MM] =  4 # всегда 4
 
 
     latex_lines_list += [r"\section*{Характеристики двигателя "+motor_name+"}"]
@@ -350,29 +386,85 @@ sp.symbols('P_DN1 P_DN2 omega_DN M_DN K_M K_OMEGA R_UM R_D U_YAD M_DD M_DM omega
     P_M = omega_e * M_m / 0.8
     M_P = U_YA * K_M / R_D
     P_max = 0.25 * M_P * omega_DH
-    i1 = (0.5 * omega_DH / omega_e) * (
+    
+    # 09.12.2023 - окей, тут два квадратных уравнения. Сейчас поправим
+
+    i1_U, i2_U = sp.symbols("i1_U i2_U")
+
+    i1_U = (0.5 * omega_DH / omega_e) * (
                 1 - sp.sqrt(1 - ((4 * omega_e * R_D * M_m) / (0.8 * K_M * K_OMEGA * omega_DH * omega_DH))))
-    i2 = (0.5 * omega_DH / omega_e) * (
+    i2_U = (0.5 * omega_DH / omega_e) * (
                 1 + sp.sqrt(1 - ((4 * omega_e * R_D * M_m) / (0.8 * K_M * K_OMEGA * omega_DH * omega_DH))))
-    write_eqs(latex_lines_list, eqs_to_solve=[i1, i2], eqs_names=["i1", "i2"])
+    
+
+    latex_lines_list += [r"Границы графика по напряжению:"]
+    write_eqs(latex_lines_list=latex_lines_list, eqs_to_solve=[i1_U, i2_U], eqs_names=["i1", "i2"])
+
+    i1i2M = sp.solve(((((M_m / (i * 0.8)) + J_D * phi_2shrt * i) / M_DD) - 1).subs(substitution_dict).evalf(), i)
+    #print(i1i2M)
+    #print(((((M_m / (i * 0.8)) + J_D * phi_2shrt * i) / M_DD) - 1).subs(substitution_dict).evalf())
+    if (len(i1i2M) < 2):
+        latex_lines_list += [r"Корней уравнения границ по моменту меньше 2."]
+        #latex_lines += latex_lines_list
+        print("Корней уравнения границ по моменту меньше 2.")
+        return 0
+    #i1_M_sol = i1_M.subs(substitution_dict).evalf()
+    #i2_M_sol = i2_M.subs(substitution_dict).evalf()
+    i1_U_sol = i1_U.subs(substitution_dict).evalf()
+    i2_U_sol = i2_U.subs(substitution_dict).evalf()
+
+    if (isinstance(i1i2M[0], (int, float, sp.Float, sp.Integer)) and isinstance(i1i2M[1], (int, float, sp.Float, sp.Integer)) and
+        isinstance(i1_U_sol, (int, float, sp.Float, sp.Integer)) and isinstance(i2_U_sol, (int, float, sp.Float, sp.Integer))):
+        pass
+    else:
+        latex_lines_list += [r"Уравнение передаточных коэффициентов не имеет действительных корней."]
+        #latex_lines += latex_lines_list
+        print("Уравнение передаточных коэффициентов не имеет действительных корней.")
+        return 0
+
+    i1_M_sol = min(i1i2M)
+    i2_M_sol = max(i1i2M)
+
+    if ((i2_U_sol < i1_M_sol) or (i2_M_sol < i1_U_sol)):
+        latex_lines_list += [r"Диапазоны напряжения и мощности не имеют точек пересечения."]
+        #latex_lines += latex_lines_list
+        print("Диапазоны напряжения и мощности не имеют точек пересечения.")
+        return 0
+
+    #print (f"i1_M_sol: {i1_M_sol} i2_M_sol: {i2_M_sol} i1_U_sol: {i1_U_sol} i2_U_sol: {i2_U_sol}")
+
+    if (i1_M_sol > i1_U_sol):
+        i1 = i1_M_sol
+    else:
+        i1 = i1_U_sol
+    
+    if (i2_M_sol < i2_U_sol):
+        i2 = i2_M_sol
+    else:
+        i2 = i2_U_sol
+
+    #solve_eqs(substitution_dict=substitution_dict, latex_lines_list = latex_lines_list, eqs_to_solve=[i1, i2], eqs_names=["i1", "i2"], consts_list=values_list)
     
     solve_eqs(substitution_dict=substitution_dict, latex_lines_list = latex_lines_list, eqs_to_solve= [U_YAD, M_DD, M_DM, omega_DH, U_YA, t_omega_d, omega_e, P_M, M_P, P_max], 
               eqs_names=["U_YAD","M_DD","M_DM","omega_DH","U_YA","t_omega_d","omega_e","P_M","M_P","P_max"], consts_list=values_list)
 
     latex_lines_list += [r"\section*{График параметров двигателя}"]
     
-    md_equ = ((M_m / (i * 0.8)) + J_D * phi_2shrt * i) / M_DD
+    md_equ = (((M_m / (i * 0.8)) + J_D * phi_2shrt * i) / M_DD)
     ud_eq = ((((M_m / (i * 0.8)) + J_D * phi_2shrt * i) * (R_YA / K_M) + K_OMEGA * i * phi_1shtr) / U_YAD)
     pe_eq = (((((M_m / (i * 0.8)) + J_D * phi_2shrt * i) * (R_YA / K_M) + K_OMEGA * i * phi_1shtr) * (
                 (M_m / (i * 0.8)) + J_D * phi_2shrt * i) * (1 / K_M)) / (U_YAN * I_YAN))
 
     write_eqs(latex_lines_list, eqs_to_solve= [md_equ, ud_eq, pe_eq], 
               eqs_names=["md_equ", "ud_eq", "pe_eq"])
+    
+    latex_lines_list += [f"Чертим график с i1 = {int(i1)} и i2 = {int(i2)}"]
 
     substitution_dict[i] = make_plot(substitution_dict, md_equ, ud_eq, pe_eq, i1, i2) 
     if (substitution_dict[i] == 0):
         latex_lines_list += [r"Уравнение передаточных коэффициентов не имеет действительных корней."]
-        latex_lines += latex_lines_list
+        #latex_lines += latex_lines_list
+        print("Уравнение передаточных коэффициентов не имеет действительных корней.")
         return 0
     global image_count
     latex_lines_list += [r"\includegraphics{latest_"+str(image_count)+".png}"]
@@ -384,89 +476,110 @@ sp.symbols('P_DN1 P_DN2 omega_DN M_DN K_M K_OMEGA R_UM R_D U_YAD M_DD M_DM omega
     solve_eqs(substitution_dict=substitution_dict, latex_lines_list = latex_lines_list, eqs_to_solve= [M_m_zvezda, M_TD], 
               eqs_names=["M_m_zvezda", "M_TD"], consts_list=values_list)
 
+    latex_lines_list += [r"Проверяем условие: M_TD <= M_DD"]
     if (M_TD.subs(substitution_dict).evalf() <= M_DD.subs(substitution_dict).evalf()):
+        pass
+    else:
         latex_lines_list += [r"Двигатель не подходит по требуемому моменту."]
-        latex_lines += latex_lines_list
+        #latex_lines += latex_lines_list
+        print("Двигатель не подходит по требуемому моменту.")
         return 0
+    latex_lines_list += [r"Условие по моменту соблюдается!"]
 
     omega_TD = i * phi_1shtr
 
     solve_eqs(substitution_dict=substitution_dict, latex_lines_list = latex_lines_list, eqs_to_solve= [omega_TD], 
               eqs_names=["omega_TD"], consts_list=values_list)
 
-    if (omega_TD.subs(substitution_dict).evalf() >= omega_DN.subs(substitution_dict).evalf()):
+    latex_lines_list += [r"Проверяем условие: omega_TD <= omega_DN"]
+    if (omega_TD.subs(substitution_dict).evalf() <= omega_DN.subs(substitution_dict).evalf()):
+        pass
+    else:
         latex_lines_list += [r"Двигатель не подходит по скорости вращения вала."]
-        latex_lines += latex_lines_list 
+        #latex_lines += latex_lines_list 
+        print("Двигатель не подходит по скорости вращения вала.")
         return 0
-    
+    latex_lines_list += [r"Условие по скорости вала соблюдается!"]
+
     U_YAT = ((R_YA * M_TD) / K_M) + K_OMEGA * omega_TD
 
     solve_eqs(substitution_dict=substitution_dict, latex_lines_list = latex_lines_list, eqs_to_solve= [U_YAT], 
               eqs_names=["U_YAT"], consts_list=values_list)
 
-    if (U_YAT.subs(substitution_dict).evalf() >= U_YAD.subs(substitution_dict).evalf()):
+    latex_lines_list += [r"Проверяем условие: U_YAT <= U_YAD"]
+    if (U_YAT.subs(substitution_dict).evalf() <= U_YAD.subs(substitution_dict).evalf()):
+        pass
+    else:
         latex_lines_list += [r"Двигатель не подходит по напряжению."]
-        latex_lines += latex_lines_list
+        #latex_lines += latex_lines_list
+        print("Двигатель не подходит по напряжению.")
         return 0
+    latex_lines_list += [r"Условие по напряжению соблюдается!"]
 
-    latex_lines_list += [r"\section*{Расчет двигателя на нагрев}"]
+    if (check_temp):
+        latex_lines_list += [r"\section*{Расчет двигателя на нагрев}"]
 
 
-    J_sr = (J_min + J_max) * 0.5
-    M_sr = (M_min + M_max) * 0.5
+        J_sr = (J_min + J_max) * 0.5
+        M_sr = (M_min + M_max) * 0.5
 
-    solve_eqs(substitution_dict=substitution_dict, latex_lines_list = latex_lines_list, eqs_to_solve= [J_min, J_min, J_sr, M_sr], 
-              eqs_names=["J_min", "J_min", "J_sr", "M_sr"], consts_list=values_list)
+        solve_eqs(substitution_dict=substitution_dict, latex_lines_list = latex_lines_list, eqs_to_solve= [J_min, J_min, J_sr, M_sr], 
+                eqs_names=["J_min", "J_min", "J_sr", "M_sr"], consts_list=values_list)
 
-    latex_lines_list += [r"\section*{1 участок}"]
+        latex_lines_list += [r"\section*{1 участок}"]
 
-    M_E_1 = M_sr / (i * eta_ph * sp.sqrt(lambda_T))
+        M_E_1 = M_sr / (i * eta_ph * sp.sqrt(lambda_T))
 
-    solve_eqs(substitution_dict=substitution_dict, latex_lines_list = latex_lines_list, eqs_to_solve= [M_E_1], 
-              eqs_names=["M_E_1"], consts_list=values_list)
+        solve_eqs(substitution_dict=substitution_dict, latex_lines_list = latex_lines_list, eqs_to_solve= [M_E_1], 
+                eqs_names=["M_E_1"], consts_list=values_list)
 
-    latex_lines_list += [r"\section*{2 участок}"]
+        latex_lines_list += [r"\section*{2 участок}"]
 
-    eta_oh = eta_ph
+        eta_oh = eta_ph
 
-    a_2shtr_R = (M_DM - (M_sr / (i * eta_ph))) / ((J_sr / (i * eta_ph)) + J_D * i)
-    a_2shtr_T = (M_DM + (M_sr * eta_oh / (i))) / ((J_sr * eta_oh / (i)) + J_D * i)
+        a_2shtr_R = (M_DM - (M_sr / (i * eta_ph))) / ((J_sr / (i * eta_ph)) + J_D * i)
+        a_2shtr_T = (M_DM + (M_sr * eta_oh / (i))) / ((J_sr * eta_oh / (i)) + J_D * i)
 
-    omega_D_max = (lambda_SKM * U_YAN / K_OMEGA) - R_D * M_sr / (K_OMEGA * K_M * i * eta_ph)
-    a_1shtr_max = omega_D_max / i
-    t_R = a_1shtr_max / a_2shtr_R
-    t_T = a_1shtr_max / a_2shtr_T
-    a_R = 0.5 * t_R * a_1shtr_max
-    a_T = 0.5 * t_T * a_1shtr_max
-    a_PS = phi_m2 - a_R - a_T
-    t_PS = a_PS / a_1shtr_max
-    t_per = t_R + t_T + t_PS
-    t2 = n * t_per
-    M_E_2 = sp.sqrt(((M_DM * M_DM * (t_R + t_T) + t_PS * (M_sr / (i * eta_ph)) ** 2) / (t_per * lambda_T)))
-    
-    solve_eqs(substitution_dict=substitution_dict, latex_lines_list = latex_lines_list, eqs_to_solve= [eta_oh, a_2shtr_R, a_2shtr_T, omega_D_max, a_1shtr_max, t_R, t_T,
-                                                                                                        a_R, a_T, a_PS, t_PS, t_per, t2, M_E_2], 
-              eqs_names=["eta_oh", "a_2shtr_R", "a_2shtr_T", "omega_D_max", "a_1shtr_max", "t_R", "t_T", "a_R", "a_T", "a_PS", "t_PS", "t_per", "t2", "M_E_2"], consts_list=values_list)
+        omega_D_max = (lambda_SKM * U_YAN / K_OMEGA) - R_D * M_sr / (K_OMEGA * K_M * i * eta_ph)
+        a_1shtr_max = omega_D_max / i
+        t_R = a_1shtr_max / a_2shtr_R
+        t_T = a_1shtr_max / a_2shtr_T
+        a_R = 0.5 * t_R * a_1shtr_max
+        a_T = 0.5 * t_T * a_1shtr_max
+        a_PS = phi_m2 - a_R - a_T
+        t_PS = a_PS / a_1shtr_max
+        t_per = t_R + t_T + t_PS
+        t2 = n * t_per
+        M_E_2 = sp.sqrt(((M_DM * M_DM * (t_R + t_T) + t_PS * (M_sr / (i * eta_ph)) ** 2) / (t_per * lambda_T)))
+        
+        solve_eqs(substitution_dict=substitution_dict, latex_lines_list = latex_lines_list, eqs_to_solve= [eta_oh, a_2shtr_R, a_2shtr_T, omega_D_max, a_1shtr_max, t_R, t_T,
+                                                                                                            a_R, a_T, a_PS, t_PS, t_per, t2, M_E_2], 
+                eqs_names=["eta_oh", "a_2shtr_R", "a_2shtr_T", "omega_D_max", "a_1shtr_max", "t_R", "t_T", "a_R", "a_T", "a_PS", "t_PS", "t_per", "t2", "M_E_2"], consts_list=values_list)
 
-    latex_lines_list += [r"\section*{3 участок}"]
-    a_2shtr = 0.6 * phi_2shrt
-    M_1shtr_DM = ((J_sr / i) + J_D * i) * a_2shtr
-    M_E_3 = sp.sqrt((0.5 * M_1shtr_DM * M_1shtr_DM + (M_sr / (i * eta_ph)) ** 2) / lambda_T)
+        latex_lines_list += [r"\section*{3 участок}"]
+        a_2shtr = 0.6 * phi_2shrt
+        M_1shtr_DM = ((J_sr / i) + J_D * i) * a_2shtr
+        M_E_3 = sp.sqrt((0.5 * M_1shtr_DM * M_1shtr_DM + (M_sr / (i * eta_ph)) ** 2) / lambda_T)
 
-    solve_eqs(substitution_dict=substitution_dict, latex_lines_list = latex_lines_list, eqs_to_solve= [a_2shtr, M_1shtr_DM, M_E_3], 
-              eqs_names=["a_2shtr", "M_1shtr_DM", "M_E_3"], consts_list=values_list)
+        solve_eqs(substitution_dict=substitution_dict, latex_lines_list = latex_lines_list, eqs_to_solve= [a_2shtr, M_1shtr_DM, M_E_3], 
+                eqs_names=["a_2shtr", "M_1shtr_DM", "M_E_3"], consts_list=values_list)
 
-    latex_lines_list += [r"\section*{Результат расчета на нагрев}"]
-    t_TS = t1 + t2 + t3
-    M_E = sp.sqrt((M_E_1*M_E_1*t1+M_E_2*M_E_2*t2+M_E_3*M_E_3*t3)/(t_TS))
+        latex_lines_list += [r"\section*{Результат расчета на нагрев}"]
+        t_TS = t1 + t2 + t3
+        M_E = sp.sqrt((M_E_1*M_E_1*t1+M_E_2*M_E_2*t2+M_E_3*M_E_3*t3)/(t_TS))
 
-    solve_eqs(substitution_dict=substitution_dict, latex_lines_list = latex_lines_list, eqs_to_solve= [t_TS, M_E], 
-              eqs_names=["t_TS", "M_E"], consts_list=values_list)
+        solve_eqs(substitution_dict=substitution_dict, latex_lines_list = latex_lines_list, eqs_to_solve= [t_TS, M_E], 
+                eqs_names=["t_TS", "M_E"], consts_list=values_list)
 
-    if (M_DN.subs(substitution_dict).evalf() >= M_E.subs(substitution_dict).evalf()):
-        latex_lines_list += [r"Двигатель не подходит по условию на нагрев."]
-        latex_lines += latex_lines_list
-        return 0
+        latex_lines_list += [r"Проверяем условие: M_DN >= M_E"]
+        if (M_DN.subs(substitution_dict).evalf() >= M_E.subs(substitution_dict).evalf()):
+            pass
+        else:
+            latex_lines_list += [r"Двигатель не подходит по условию на нагрев."]
+            #latex_lines += latex_lines_list
+            print("Двигатель не подходит по условию на нагрев.")
+            return 0
+        latex_lines_list += [r"Условие по нагреву соблюдается!"]
     latex_lines += latex_lines_list
     return m_DV.subs(substitution_dict).evalf()
 
@@ -511,7 +624,8 @@ def calculate():
         g:  float(values_list[27]),
         tau_omega_d: float(values_list[28]),
         eta_ph: float(values_list[29]),  # кпд редуктора прямого хода
-        sp.pi: math.pi
+        sp.pi: math.pi,
+        sp.I: 0
     }
 
     latex_code = []
@@ -564,11 +678,18 @@ def calculate():
     solve_eqs(substitution_dict=substitution_dict, latex_lines_list = latex_code, eqs_to_solve= [J_max, M_max, M_m, omega_ekv, P_M], 
               eqs_names=["J_max", "M_max", "M_m", "omega_ekv", "P_M"], consts_list=values_list)
     rc = 0
+    ch_temp = 0
+    global designation_global
     for n_motor in range(len(motors_list)):
+        if (designation_global == "кисть"):
+            ch_temp = 1
+        else:
+            ch_temp = 0
         rc = try_motor(latex_lines=latex_code, motor_name = motors_list[n_motor], motor_params = motors_params_list[n_motor],
-                         substitution_dict=substitution_dict, designation = "кисть") 
+                         substitution_dict=substitution_dict, designation = "кисть", check_temp=ch_temp) 
         if (rc):
             latex_code += [r"\section*{Двигатель " + motors_list[n_motor] + " подходит к условию}"]
+            print("Двигатель " + motors_list[n_motor] + " подходит к условию")
             break
         else:
             pass
@@ -576,6 +697,7 @@ def calculate():
 
     if (rc == 0):
         latex_code += ["Расчет кисти завершен неудачно, ни один двигатель не подошел!"]
+        print("Расчет кисти завершен неудачно, ни один двигатель не подошел!")
         writeFile(latex_code)
         return 0
     
@@ -593,16 +715,22 @@ def calculate():
               eqs_names=["m_pr", "J_max", "M_max", "M_m"], consts_list=values_list)
     
     for n_motor in range(len(motors_list)):
+        if (designation_global == "локоть"):
+            ch_temp = 1
+        else:
+            ch_temp = 0
         rc = try_motor(latex_lines=latex_code, motor_name = motors_list[n_motor], motor_params = motors_params_list[n_motor],
-                         substitution_dict=substitution_dict, designation = "локоть") 
+                         substitution_dict=substitution_dict, designation = "локоть", check_temp=ch_temp) 
         if (rc):
             latex_code += [r"\section*{Двигатель " + motors_list[n_motor] + " подходит к условию}"]
+            print("Двигатель " + motors_list[n_motor] + " подходит к условию")
             break
         else:
             pass
             #latex_code += [r"Двигатель не подходит к условию"]
     if (rc == 0):
         latex_code += ["Расчет локтя завершен неудачно, ни один двигатель не подошел!"]
+        print("Расчет локтя завершен неудачно, ни один двигатель не подошел!")
         writeFile(latex_code)
         return 0
 
@@ -626,16 +754,22 @@ def calculate():
               eqs_names=["m_p4", "J_max", "M_max", "M_m", "omega_ekv", "P_M", "P_max"], consts_list=values_list)
 
     for n_motor in range(len(motors_list)):
+        if (designation_global == "плечо"):
+            ch_temp = 1
+        else:
+            ch_temp = 0
         rc = try_motor(latex_lines=latex_code, motor_name = motors_list[n_motor], motor_params = motors_params_list[n_motor],
-                         substitution_dict=substitution_dict, designation = "плечо") 
+                         substitution_dict=substitution_dict, designation = "плечо", check_temp=ch_temp) 
         if (rc):
             latex_code += [r"\section*{Двигатель " + motors_list[n_motor] + " подходит к условию}"]
+            print("Двигатель " + motors_list[n_motor] + " подходит к условию")
             break
         else:
             pass
             #latex_code += [r"\section*{Двигатель не подходит к условию}"]
     if (rc == 0):
         latex_code += ["Расчет плеча завершен неудачно, ни один двигатель не подошел!"] 
+        print("Расчет плеча завершен неудачно, ни один двигатель не подошел!")
         writeFile(latex_code)
         return 0
     
@@ -664,9 +798,10 @@ def writeFile(latex_code):
     os.system('pdflatex formulas.tex -quiet')
 
     print("file converted, ready")
+    root.destroy()
 
 # Create button to read textboxes
 read_button = tk.Button(root, text="Нажмите для начала расчета задачи (в среднем занимает 2-5 минут)", command=calculate)
-read_button.grid(row=29, columnspan=2)
+read_button.grid(row=len(values_list)+1, columnspan=2)
 
 root.mainloop()
